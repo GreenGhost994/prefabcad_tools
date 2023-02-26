@@ -5,17 +5,30 @@ from collections import defaultdict
 import re
 
 class Accessory:
-    """Informations about PrefaBCad accessory"""
+    """PrefaBCad accessory"""
+    
     def __init__(self, acc_data: list):
         self.amount = clear_val(acc_data[0], 'float')
         self.name = acc_data[1]
         self.length = clear_val(acc_data[2], 'float')
-        self.index = clear_index(acc_data[3], acc_data[1])
+        self.index, self.type = clear_index(acc_data[3], acc_data[1])
+
+    def __repr__(self):
+            return f'{self.amount}x {self.name} ({self.index})'
+
+    def __eq__(self, other):
+        if isinstance(other, Accessory):
+            return (self.amount, self.name, self.length, self.index) == (other.amount, other.name, other.length, other.index)
+        return False
+    
+    def __hash__(self):
+        return hash((self.amount, self.name, self.length, self.index))
 
 
 @dataclass
 class Element:
-    """Informations about PrefaBCad element"""
+    """PrefaBCad element"""
+    
     file_date: float = 0
     drawing_name: str = ''
     drawing_number: str = ''
@@ -56,7 +69,9 @@ class Element:
     project_index: str = ''
     accessories: list[Accessory] = field(default_factory=list)
 
-
+    def __repr__(self):
+        return self.element_name
+            
     def from_txt(self, file_path: str):
         def load_parameters(self, parameters: list, accessories: list):
             self.file_date = parameters[0]
@@ -123,9 +138,25 @@ class Element:
             except Exception as e:
                 print(e, file_path)
                 return
+    
+    def acc_stats(self):
+        """Calculate stats of accessories"""
+
+        self.stats = {'lines_amount': len(self.accessories),
+        'acc_lines_amount': len([x for x in self.accessories if x.type == 'accessory']),
+        'acc_amount': sum([x.amount for x in self.accessories if x.type == 'accessory']),
+        'steel_acc_lines_amount': len([x for x in self.accessories if x.type == 'steel_accessory']),
+        'steel_acc_amount': sum([x.amount for x in self.accessories if x.type == 'steel_accessory']),
+        'windows_lines_amount': len([x for x in self.accessories if x.type == 'window']),
+        'windows_amount': sum([x.amount for x in self.accessories if x.type == 'window']),
+        'other_lines_amount': len([x for x in self.accessories if x.type == 'other']),
+        'other_amount': sum([x.amount for x in self.accessories if x.type == 'other']),
+        }
+        return self
 
 def read_txt(file_path: str) -> list[list]:
     """Read data from PrefaBCad standard .txt file and split them to parameters and accessories."""
+    
     count = 0
     accessories = []
     with open(file_path) as fp:
@@ -142,6 +173,7 @@ def read_txt(file_path: str) -> list[list]:
 
 def txt_element_name(file_path: str) -> str:
     """Read element name from PrefaBCad standard .txt file"""
+
     with open(file_path) as fp:
         for line in fp:
             parameters = (line.strip()).split('§')
@@ -149,6 +181,7 @@ def txt_element_name(file_path: str) -> str:
 
 def convert_to_list_of_lists(input_list: list) -> list[list[str]]:
     """Convertion list to list of list len 2"""
+
     result = []
     for i in range(0, len(input_list), 2):
         result.append(input_list[i:i+2])
@@ -156,6 +189,7 @@ def convert_to_list_of_lists(input_list: list) -> list[list[str]]:
 
 def clear_val(value: str, vtype: str) -> Any:
     """Clear and unify the loaded values"""
+
     if type(value) == str:
         value = value.strip()
     non_value = ''
@@ -180,18 +214,23 @@ def clear_index(index: str, name: str) -> str:
     """Format index to 12 symbols if pattern is found"""
 
     if len(index) == 12:
-        return index
+        return index, 'accessory'
     elif index.startswith(('SB', 'SH')):
         match = re.match(r'^[A-Za-z]{2}\d{10}', index)
         if match:
-            return match.group()
+            return match.group(), 'accessory'
     elif index.startswith('B'):
         match = re.match(r'^[A-Za-z]{1}\d{11}', index)
         if match:
-            return match.group()
+            return match.group(), 'accessory'
     if name.startswith('Marka wg rys. '):
         index = name.strip('Marka wg rys. ')
-    return index
+        return index, 'steel_accessory'
+    if '_AK_' in index:
+        return index, 'steel_accessory'
+    elif '_AW_' in index:
+        return index, 'window'
+    return index, 'other'
 
 def load_elements(directory: str) -> dict:
     """Loop through all .txt files in directory and return data of all elements"""
@@ -208,16 +247,18 @@ def load_elements(directory: str) -> dict:
 
     return elements
 
-def get_accessories(elements: dict[Element]) -> dict:
-    """Extract sum of accessories from elements"""
+def get_accessories(elements: dict[Element] | list[Element]) -> dict:
+    """Extract list of accessories from dict or list of elements"""
 
     accessories = defaultdict(lambda: 0)
+    if isinstance(elements, dict):
+        elements = elements.values()
 
-    for i in elements.values():
+    for i in elements:
         for j in i.accessories:
             acc_name = (j.name, j.length, j.index)
             accessories[acc_name] += j.amount
-
+    
     return [Accessory([v, k[0], k[1], k[2]]) for k, v in accessories.items()]
 
 def update_steel_acc_amount(file_path: str, name: str, amount: int) -> bool:

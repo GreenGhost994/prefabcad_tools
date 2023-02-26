@@ -1,5 +1,7 @@
 from components.prefabcad import *
 from components.steel_acc_sync import *
+from components.element_stats import analyze_project_stats
+from components.results import dump_results
 from os import path, environ
 
 import logging
@@ -16,8 +18,17 @@ root.addHandler(handler)
 
 
 directory = input('Enter project folder path: ')
+mode = input('1: element stats, 2: steel accessory sync')
 
-if path.exists(directory):
-    sync_steel_acc(directory)
-else:
+if not path.exists(directory):
     raise FileNotFoundError('No such directory')
+if int(mode) not in [1, 2]:
+    raise ValueError('Mode not avaible')
+
+if int(mode) == 1:
+    project_name = input('Enter project INDEX: ')
+    results = analyze_project_stats(directory)
+    dump_results(results, project_name, 'element_stats')
+
+elif int(mode) == 2:
+    sync_steel_acc(directory)
