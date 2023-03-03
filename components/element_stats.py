@@ -32,6 +32,8 @@ def calc_acc_average(ele_list: list) -> dict:
     """Calculate average stats of list of objects (Element)"""
 
     element_amount = [ele.amount for ele in ele_list]
+    if sum(element_amount) == 0:
+        return {}, {}
     ele_average = {
         'volume': sum(weight * value for weight, value in zip(element_amount, [ele.volume for ele in ele_list])) / sum(element_amount),
         'length': sum(weight * value for weight, value in zip(element_amount, [ele.element_length for ele in ele_list])) / sum(element_amount),
@@ -109,9 +111,9 @@ def analyze_repeatability(cat_k: str, cat: list, element_types_report: dict) -> 
     else:
         element_amount = element_types_report[cat_k]['element_amount']
         if element_amount == 0:
-            logging.error(f'{cat_k}: amount = 0 {element_types_report[cat_k]}')
+            logging.error(f'{cat_k}: amount = 0 {element_types_report[cat_k]}, {cat_k}')
             repeatability_ratio = 0
-            raise ValueError
+            # raise ValueError(f'element_amount = 0: {cat_k}')
         else:
             repeatability_ratio = (element_amount - unique_elements) / element_amount
 
@@ -125,7 +127,8 @@ def analyze_elements(elements: dict, global_accessories: dict) -> dict:
     """Group elements by element type. Analize stats of each group."""
 
     element_type_dict=defaultdict(lambda: [])
-    [element_type_dict[x.element_type].append(x) for x in elements.values()]  # segregate elements by element type
+    clr_list = ['detal naprawy', 'akcesorium stalowe', 'rysunek zlozeniowy']  # filter element types
+    [element_type_dict[x.element_type].append(x) for x in elements.values() if x.element_type not in clr_list]  # segregate elements by element type
     
     report={}
     for k, v in element_type_dict.items():  # element group amounts

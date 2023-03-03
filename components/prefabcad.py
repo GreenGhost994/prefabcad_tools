@@ -177,7 +177,10 @@ def txt_element_name(file_path: str) -> str:
     with open(file_path) as fp:
         for line in fp:
             parameters = (line.strip()).split('§')
-            return parameters[62]
+            if len(parameters) >= 62:
+                return parameters[62]
+            else:
+                return False
 
 def convert_to_list_of_lists(input_list: list) -> list[list[str]]:
     """Convertion list to list of list len 2"""
@@ -207,6 +210,12 @@ def clear_val(value: str, vtype: str) -> Any:
                 value = float(value)
             elif (value.replace(".", "")).isdigit():
                 value = float(value)
+    elif vtype == 'rev':
+        if value.isnumeric():
+            if int(value) == 0:
+                value = non_value
+            else:
+                value = chr(64 +int(value))
 
     return value
 
@@ -243,7 +252,8 @@ def load_elements(directory: str) -> dict:
             if file.endswith('.txt'):
                 fpath = path.join(subdir, file)
                 element_name = txt_element_name(fpath)
-                elements[element_name].from_txt(fpath)
+                if element_name:
+                    elements[element_name].from_txt(fpath)
 
     return elements
 
