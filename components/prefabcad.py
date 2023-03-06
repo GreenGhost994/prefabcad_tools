@@ -4,8 +4,9 @@ from os import path, listdir, walk
 from collections import defaultdict
 import re
 
+
 class Accessory:
-    """PrefaBCad accessory"""
+    """PrefaBCad accessory."""
     
     def __init__(self, acc_data: list):
         self.amount = clear_val(acc_data[0], 'float')
@@ -26,8 +27,41 @@ class Accessory:
 
 
 @dataclass
+class Project:
+    """Project data with most important parameters."""
+
+    id: int
+    index: str
+    name: str
+    budget: str
+    budget_real: str
+    scope: str
+    country: str
+    coordinator: str
+    project_manager: str
+    value9: str
+    superior: str
+    software: str
+    value12: str
+    value13: str
+    value14: str
+    value15: str
+    value16: str
+    value17: str
+    value18: str
+    designer: str
+    project_type: str
+    status: str
+    path: str
+
+    @classmethod
+    def from_list(cls, project_list):
+        return cls(*project_list)
+
+
+@dataclass
 class Element:
-    """PrefaBCad element"""
+    """PrefaBCad element data."""
     
     file_date: float = 0
     drawing_name: str = ''
@@ -140,7 +174,7 @@ class Element:
                 return
     
     def acc_stats(self):
-        """Calculate stats of accessories"""
+        """Calculate stats of accessories."""
 
         self.stats = {'lines_amount': len(self.accessories),
         'acc_lines_amount': len([x for x in self.accessories if x.type == 'accessory']),
@@ -153,6 +187,7 @@ class Element:
         'other_amount': sum([x.amount for x in self.accessories if x.type == 'other']),
         }
         return self
+
 
 def read_txt(file_path: str) -> list[list]:
     """Read data from PrefaBCad standard .txt file and split them to parameters and accessories."""
@@ -171,8 +206,9 @@ def read_txt(file_path: str) -> list[list]:
 
         return parameters, accessories
 
+
 def txt_element_name(file_path: str) -> str:
-    """Read element name from PrefaBCad standard .txt file"""
+    """Read element name from PrefaBCad standard .txt file."""
 
     with open(file_path) as fp:
         for line in fp:
@@ -182,16 +218,18 @@ def txt_element_name(file_path: str) -> str:
             else:
                 return False
 
+
 def convert_to_list_of_lists(input_list: list) -> list[list[str]]:
-    """Convertion list to list of list len 2"""
+    """Convertion list to list of list len 2."""
 
     result = []
     for i in range(0, len(input_list), 2):
         result.append(input_list[i:i+2])
     return result
 
+
 def clear_val(value: str, vtype: str) -> Any:
-    """Clear and unify the loaded values"""
+    """Clear and unify the loaded values."""
 
     if type(value) == str:
         value = value.strip()
@@ -219,8 +257,9 @@ def clear_val(value: str, vtype: str) -> Any:
 
     return value
 
+
 def clear_index(index: str, name: str) -> str:
-    """Format index to 12 symbols if pattern is found"""
+    """Format index to 12 symbols if pattern is found."""
 
     if len(index) == 12:
         return index, 'accessory'
@@ -241,8 +280,9 @@ def clear_index(index: str, name: str) -> str:
         return index, 'window'
     return index, 'other'
 
+
 def load_elements(directory: str) -> dict:
-    """Loop through all .txt files in directory and return data of all elements"""
+    """Loop through all .txt files in directory and return data of all elements."""
 
     elements = defaultdict(lambda: Element())
 
@@ -257,8 +297,9 @@ def load_elements(directory: str) -> dict:
 
     return elements
 
+
 def get_accessories(elements: dict[Element] | list[Element]) -> dict:
-    """Extract list of accessories from dict or list of elements"""
+    """Extract list of accessories from dict or list of elements."""
 
     accessories = defaultdict(lambda: 0)
     if isinstance(elements, dict):
@@ -270,6 +311,7 @@ def get_accessories(elements: dict[Element] | list[Element]) -> dict:
             accessories[acc_name] += j.amount
     
     return [Accessory([v, k[0], k[1], k[2]]) for k, v in accessories.items()]
+
 
 def update_steel_acc_amount(file_path: str, name: str, amount: int) -> bool:
     """Modify amount in .txt file."""
@@ -284,3 +326,43 @@ def update_steel_acc_amount(file_path: str, name: str, amount: int) -> bool:
             f.write(data) # write everything to the file
             return True
         return False
+
+
+def translate_data(input: str) -> str:
+    """Read time data."""
+
+    text_length = len(input)
+    text_start = 0
+    text_value = ""
+
+    while text_start < text_length:
+        char = int(input[text_start:text_start+3])
+        char = int((char + 59) / 2) - 200
+
+        if char <= 255 and char >= 0:
+            text_value += chr(char)
+        else:
+            if char == -93:
+                text_value += "Ł"
+            elif char == -81:
+                text_value += "Ż"
+            elif char == -116:
+                text_value += "Ś"
+            else:
+                text_value += "^"
+
+        text_start += 3
+
+    return text_value
+
+
+def load_prefabcad_nfo(ini_path: str) -> dict:
+    """Load projects from .nfo file."""
+
+    projects_dict = {}
+    with open(ini_path) as f:
+        for line in f:
+            project=Project.from_list(line.split("|")[:23])
+            projects_dict[project.index] = project
+
+    return projects_dict

@@ -2,6 +2,7 @@ import logging
 from os import path
 from components.prefabcad import load_elements, get_accessories, update_steel_acc_amount
 
+
 def sync_steel_acc(directory: str):
     production_dir = path.join(directory, "Do produkcji")
     drawings_dir = path.join(directory, "Rysunki", "Bloki")
